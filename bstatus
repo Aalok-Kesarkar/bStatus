@@ -5,16 +5,31 @@ date=$(date)
 current_dir=$(pwd)
 lastBoot=$(who -b | cut -d " " -f 12-)
 
-connectionSSID=$(iwconfig | grep ESSID | cut -d "\"" -f 2)
+netCheck=$(iwconfig)
 
-ip=$(curl ipinfo.io/ip)
-logicalLocation=$( proxychains curl ipinfo.io/geo | grep -i -e city -e timezone -e ip\" | cut -d "\"" -f 4)
-lastWord=$(echo $logicalLocation | wc -w)
+wlanAdaptorStatus=$(echo "$netCheck" | grep -c wlan0)
+# if wlan0 adapter is found live...
+if [ "$wlanAdaptorStatus" = 1 ]; then
+    # check wireless connection status
+    routerStatus=$(echo "$netCheck" | grep -c unassociated)
+fi
 
+if [ "$routerStatus" = 0 ]
+then
+    # Get non-proxy public IP address
+    ip=$(curl ipinfo.io/ip)
+
+    # Get Proxy IP and IP location
+    logicalLocation=$(proxychains curl ipinfo.io/geo | grep -i -e city -e timezone -e ip\" | cut -d "\"" -f 4)
+    totalWords=$(echo $logicalLocation | wc -w)
+fi
+
+# For coloured output
 green='\033[0;32m'
 yellow='\033[0;33m'
 blue='\033[0;34m'
 cyan='\033[0;36m'
+red='\033[0;31m'
 clear='\033[0m'
 
 echo ""
@@ -25,8 +40,24 @@ echo "Date ---> $date"
 echo "You are in ---> $current_dir"
 echo "System last booted ---> $lastBoot"
 echo ""
-echo -e "You're connected to ---> ${blue}$connectionSSID${clear}"
-echo -e "Your public IP ---> ${cyan}$ip${clear}"
-echo -e "Your proxy  IP ---> ${yellow}$( echo $logicalLocation | cut -d " " -f 1 )${clear}"
-echo -e "Your proxy location ---> ${yellow}$( echo $logicalLocation | cut -d " " -f 2 )${clear}"
-echo -e "Your proxy timezone ---> ${yellow}$( echo $logicalLocation | cut -d " " -f $lastWord )${clear}"
+
+if [ "$wlanAdaptorStatus" = 1 ]
+then
+    
+    if [ "$routerStatus" = 0 ]
+    then
+        
+        connectionSSID=$(echo "$netCheck" | grep ESSID | cut -d "\"" -f 2)
+        
+        echo -e "${green}wlan0${clear} is connected to ---> ${blue}$connectionSSID${clear}"
+        echo -e "Public IP ---> ${cyan}$ip${clear}"
+        echo -e "Proxy  IP ---> ${yellow}$(echo $logicalLocation | cut -d " " -f 1)${clear}"
+        echo -e "Proxy location ---> ${yellow}$(echo $logicalLocation | cut -d " " -f 2)${clear}"
+        echo -e "Proxy timezone ---> ${yellow}$(echo $logicalLocation | cut -d " " -f $totalWords)${clear}"
+    else
+    # If not connected to WiFi then return error message
+        echo -e "${red}You are NOT connected to the router${clear}"
+    fi
+else
+    echo -e "${red}wlan0 NOT found${clear}"
+fi
