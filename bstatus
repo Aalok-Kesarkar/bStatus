@@ -1,0 +1,32 @@
+#!/bin/bash
+
+name=$(whoami)
+date=$(date)
+current_dir=$(pwd)
+lastBoot=$(who -b | cut -d " " -f 12-)
+
+connectionSSID=$(iwconfig | grep ESSID | cut -d "\"" -f 2)
+
+ip=$(curl ipinfo.io/ip)
+logicalLocation=$( proxychains curl ipinfo.io/geo | grep -i -e city -e timezone -e ip\" | cut -d "\"" -f 4)
+lastWord=$(echo $logicalLocation | wc -w)
+
+green='\033[0;32m'
+yellow='\033[0;33m'
+blue='\033[0;34m'
+cyan='\033[0;36m'
+clear='\033[0m'
+
+echo ""
+echo ""
+echo -e "${green}WELCOME BACK $name,${clear}"
+echo ""
+echo "Date ---> $date"
+echo "You are in ---> $current_dir"
+echo "System last booted ---> $lastBoot"
+echo ""
+echo -e "You're connected to ---> ${blue}$connectionSSID${clear}"
+echo -e "Your public IP ---> ${cyan}$ip${clear}"
+echo -e "Your proxy  IP ---> ${yellow}$( echo $logicalLocation | cut -d " " -f 1 )${clear}"
+echo -e "Your proxy location ---> ${yellow}$( echo $logicalLocation | cut -d " " -f 2 )${clear}"
+echo -e "Your proxy timezone ---> ${yellow}$( echo $logicalLocation | cut -d " " -f $lastWord )${clear}"
