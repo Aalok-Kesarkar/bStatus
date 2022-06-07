@@ -1,28 +1,10 @@
 #!/bin/bash
 
-name=$(whoami)
 date=$(date)
-current_dir=$(pwd)
+currentDir=$(pwd)
 lastBoot=$(who -b | cut -d " " -f 12-)
 
 netCheck=$(iwconfig)
-
-wlanAdaptorStatus=$(echo "$netCheck" | grep -c wlan0)
-# if wlan0 adapter is found live...
-if [ "$wlanAdaptorStatus" = 1 ]; then
-    # check wireless connection status
-    routerStatus=$(echo "$netCheck" | grep -c unassociated)
-fi
-
-if [ "$routerStatus" = 0 ]
-then
-    # Get non-proxy public IP address
-    ip=$(curl ipinfo.io/ip)
-
-    # Get Proxy IP and IP location
-    logicalLocation=$(proxychains curl ipinfo.io/geo | grep -i -e city -e timezone -e ip\" | cut -d "\"" -f 4)
-    totalWords=$(echo $logicalLocation | wc -w)
-fi
 
 # For coloured output
 green='\033[0;32m'
@@ -32,32 +14,66 @@ cyan='\033[0;36m'
 red='\033[0;31m'
 clear='\033[0m'
 
-echo ""
-echo ""
-echo -e "${green}WELCOME BACK $name,${clear}"
-echo ""
-echo "Date ---> $date"
-echo "You are in ---> $current_dir"
-echo "System last booted ---> $lastBoot"
-echo ""
+proxyEcho() {
+    # $1 is $logicalLocation and $2 is $totalWords
+    echo -e "Proxy  IP ---> ${yellow}$(echo $1 | cut -d " " -f 1)${clear}"
+    echo -e "Proxy location ---> ${yellow}$(echo $1 | cut -d " " -f 2)${clear}"
+    echo -e "Proxy timezone ---> ${yellow}$(echo $1 | cut -d " " -f $2)${clear}"
+}
 
-if [ "$wlanAdaptorStatus" = 1 ]
-then
-    
-    if [ "$routerStatus" = 0 ]
-    then
-        
-        connectionSSID=$(echo "$netCheck" | grep ESSID | cut -d "\"" -f 2)
-        
-        echo -e "${green}wlan0${clear} is connected to ---> ${blue}$connectionSSID${clear}"
-        echo -e "Public IP ---> ${cyan}$ip${clear}"
-        echo -e "Proxy  IP ---> ${yellow}$(echo $logicalLocation | cut -d " " -f 1)${clear}"
-        echo -e "Proxy location ---> ${yellow}$(echo $logicalLocation | cut -d " " -f 2)${clear}"
-        echo -e "Proxy timezone ---> ${yellow}$(echo $logicalLocation | cut -d " " -f $totalWords)${clear}"
+publicIPEcho() {
+    # $1 is $wifiEcho and $2 is $ip
+    echo -e "${green}wlan0${clear} is connected to ---> ${blue}$1${clear}"
+    echo -e "Public IP ---> ${cyan}$2${clear}"
+}
+
+basicInfoEcho() {
+    # $1 is $userName, $2 is $date, $3 is $currentDir and $4 is $lastBoot
+    echo ""
+    echo ""
+    echo -e "${green}WELCOME BACK $(whoami),${clear}"
+    echo "Date ---> $1"
+    echo "You are in ---> $2"
+    echo "System last booted ---> $3"
+    echo ""
+}
+
+wlanAdaptorStatus=$(echo "$netCheck" | grep -c wlan0)
+
+# if wlan0 adapter is found live, then...
+if [ "$wlanAdaptorStatus" = 1 ]; then
+    # check wireless connection status
+    routerStatus=$(echo "$netCheck" | grep -c unassociated)
+
+    if [ "$routerStatus" = 0 ]; then
+        # Non-proxy public IP address
+        ip=$(curl ipinfo.io/ip)
+        proxyStatus=$( service tor status | grep -o -c exited )
+
+        if [ "$proxyStatus" = 3 ]; then
+            # Get Proxy IP and IP location
+            logicalLocation=$(proxychains curl ipinfo.io/geo | grep -e city -e timezone -e ip\" | cut -d "\"" -f 4)
+            totalWords=$(echo $logicalLocation | wc -w)
+        fi
+
     else
-    # If not connected to WiFi then return error message
         echo -e "${red}You are NOT connected to the router${clear}"
     fi
+
 else
     echo -e "${red}wlan0 NOT found${clear}"
+fi
+
+basicInfoEcho "$date" "$currentDir" "$lastBoot"
+
+if [ "$wlanAdaptorStatus" = 1 ]; then
+    if [ "$routerStatus" = 0 ]; then
+        wifiSSID=$(echo "$netCheck" | grep ESSID | cut -d "\"" -f 2)
+        publicIPEcho "$wifiSSID" "$ip"
+        if [ "$proxyStatus" = 3 ]; then
+            proxyEcho "$logicalLocation" "$totalWords"
+        else
+            echo -e "${red}Proxy connection is NOT Active${clear}"
+        fi
+    fi
 fi
