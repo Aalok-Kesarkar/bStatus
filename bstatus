@@ -61,7 +61,7 @@ if [ "$wlanAdaptorStatus" = 1 ]; then
     fi
 
 else
-    echo -e "${red}wlan0 NOT found${clear}"
+    echo -e "${red}wlan0 NOT found, Connect a wireless adapter${clear}"
 fi
 
 basicInfoEcho "$date" "$currentDir" "$lastBoot"
@@ -74,6 +74,7 @@ if [ "$wlanAdaptorStatus" = 1 ]; then
             proxyEcho "$logicalLocation" "$totalWords"
         else
             echo -e "${red}Proxy connection is NOT Active${clear}"
+            echo -e "${yellow}start Proxy with -->${clear} ${green}sudo service tor start${clear}"
         fi
     fi
 fi
