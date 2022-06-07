@@ -31,6 +31,7 @@ basicInfoEcho() {
     # $1 is $userName, $2 is $date, $3 is $currentDir and $4 is $lastBoot
     echo ""
     echo ""
+    echo "============================================"
     echo -e "${green}WELCOME BACK $(whoami),${clear}"
     echo "Date ---> $1"
     echo "You are in ---> $2"
@@ -78,3 +79,4 @@ if [ "$wlanAdaptorStatus" = 1 ]; then
         fi
     fi
 fi
+echo "============================================"
