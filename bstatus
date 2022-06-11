@@ -1,18 +1,24 @@
 #!/bin/bash
 
-date=$(date)
-currentDir=$(pwd)
-lastBoot=$(who -b | cut -d " " -f 12-)
-
-netCheck=$(iwconfig)
-
 # For coloured output
-green='\033[1;32m'
+greenBold='\033[1;32m'
+greenItalic='\033[3;32m'
+green='\033[0;32m'
 yellow='\033[0;33m'
 blue='\033[0;34m'
+blueItalicBold='\033[1;3;34m'
 cyan='\033[0;36m'
-red='\033[3;1;31m'
+redItalicBold='\033[3;1;31m'
 clear='\033[0;0m'
+
+if [ "$1" = "--speed" ]; then
+    echo -e "${greenItalic}[!] Testing internet speed will require minimum 30 sec.${clear}"
+else
+    echo -e "${greenItalic}[*] You can use --speed to run internet speed test${clear}"
+fi
+
+echo -e "${blue}[+] Checking network adapter${clear}"
+netCheck=$(iwconfig)
 
 proxyEcho() {
     # $1 is $logicalLocation and $2 is $totalWords
@@ -23,8 +29,9 @@ proxyEcho() {
 
 publicIPEcho() {
     # $1 is $wifiEcho and $2 is $ip
-    echo -e "${green}wlan0${clear} is connected to ---> ${blue}$1${clear}"
+    echo -e "${greenBold}wlan0${clear} is connected to ---> ${blue}$1${clear}"
     echo -e "Public IP ---> ${cyan}$2${clear}"
+    echo ""
 }
 
 basicInfoEcho() {
@@ -32,10 +39,19 @@ basicInfoEcho() {
     echo ""
     echo ""
     echo "============================================"
-    echo -e "${green}WELCOME BACK $(whoami),${clear}"
-    echo "Date ---> $1"
-    echo "You are in ---> $2"
-    echo "System last booted ---> $3"
+    echo -e "${greenBold}WELCOME BACK $(whoami),${clear}"
+    echo "Date ---> $(date)"
+    echo "You are in ---> $(pwd)"
+    echo "System last booted ---> $(who -b | cut -d " " -f 12-)"
+    echo ""
+}
+
+speedTest() {
+    # $1 is $speedtest result from speedtest command
+    pingStatus=$(echo "$1" | grep Ping | cut -d ":" -f 2)
+    downloadSpeed=$(echo "$1" | grep Download | cut -d ":" -f 2)
+    echo -e "Ping speed ---> ${green}$pingStatus${clear}"
+    echo -e "Download speed ---> ${green}$downloadSpeed${clear}"
     echo ""
 }
 
@@ -48,33 +64,45 @@ if [ "$wlanAdaptorStatus" = 1 ]; then
 
     if [ "$routerStatus" = 0 ]; then
         # Non-proxy public IP address
+        echo -e "${blue}[+] Getting public IP address${clear}"
         ip=$(curl ipinfo.io/ip)
-        proxyStatus=$( service tor status | grep -o -c exited )
+        proxyStatus=$(service tor status | grep -o -c exited)
+
+        if [ $1 = "--speed" ]; then
+            echo -e "${blue}[+] Performing internet speed test${clear}"
+            speedtest=$(speedtest --no-upload --simple)
+        fi
 
         if [ "$proxyStatus" = 3 ]; then
             # Get Proxy IP and IP location
+            echo -e "${blue}[+] Checking proxy IP and geo-location${clear}"
             logicalLocation=$(proxychains curl ipinfo.io/geo | grep -e city -e timezone -e ip\" | cut -d "\"" -f 4)
             totalWords=$(echo $logicalLocation | wc -w)
         fi
 
     else
-        echo -e "${red}You are NOT connected to the router${clear}"
+        echo -e "${redItalicBold}You are NOT connected to the router${clear}"
     fi
 
 else
-    echo -e "${red}wlan0 NOT found, Connect a wireless adapter${clear}"
+    echo -e "${redItalicBold}wlan0 NOT found, Connect a wireless adapter${clear}"
 fi
 
-basicInfoEcho "$date" "$currentDir" "$lastBoot"
+basicInfoEcho
 
 if [ "$wlanAdaptorStatus" = 1 ]; then
     if [ "$routerStatus" = 0 ]; then
         wifiSSID=$(echo "$netCheck" | grep ESSID | cut -d "\"" -f 2)
         publicIPEcho "$wifiSSID" "$ip"
+
+        if [ "$1" = "--speed" ]; then
+            speedTest "$speedtest"
+        fi
+
         if [ "$proxyStatus" = 3 ]; then
             proxyEcho "$logicalLocation" "$totalWords"
         else
-            echo -e "${red}Proxy connection is NOT Active${clear}"
+            echo -e "${redItalicBold}Proxy connection is NOT Active${clear}"
             echo -e "${yellow}start Proxy with -->${clear} ${green}sudo service tor start${clear}"
         fi
     fi
